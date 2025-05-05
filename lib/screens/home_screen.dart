@@ -249,7 +249,7 @@ class HarvestCard extends StatelessWidget {
                   Expanded(
                     child: HarvestInfoItem(
                       label: 'Đơn giá',
-                      value: '${formatter.format(harvest.unitPrice)}₫/kg',
+                      value: '${formatter.format(harvest.unitPrice)} ₫/kg',
                       icon: Icons.attach_money,
                     ),
                   ),
@@ -336,7 +336,7 @@ class PaymentSummary extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+        color: Theme.of(context).colorScheme.primary.withAlpha(10),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -346,7 +346,7 @@ class PaymentSummary extends StatelessWidget {
           FittedBox(
             fit: BoxFit.scaleDown,
             child: Text(
-              '${formatter.format(totalPayment)}₫',
+              '${formatter.format(totalPayment)} ₫',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,

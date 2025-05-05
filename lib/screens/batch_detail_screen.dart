@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -66,7 +68,15 @@ class _BatchDetailScreenState extends State<BatchDetailScreen> {
     final isCollapsed =
         _scrollController.hasClients && _scrollController.offset > 50;
     if (isCollapsed != _isCollapsed) {
-      setState(() => _isCollapsed = isCollapsed);
+      // Sử dụng addPostFrameCallback để trì hoãn việc gọi setState đến frame tiếp theo
+      // Điều này tránh việc gọi setState trong quá trình bố trí
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() {
+            _isCollapsed = isCollapsed;
+          });
+        }
+      });
     }
   }
 
@@ -850,37 +860,43 @@ class UnitForm extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           spacing: 8,
-          children: [_buildWeightTextField(bottomInset), _buildSubmitButton()],
+          children: [
+            TextFormField(
+              controller: weightController,
+              focusNode: weightFocusNode,
+              decoration: InputDecoration(
+                labelText: 'Cân nặng (kg)',
+                border: const OutlineInputBorder(),
+                suffixText: 'kg',
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: bottomInset > 0 ? 8 : 12,
+                ),
+                suffixIcon:
+                    isEditing
+                        ? IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: onCancelEditing,
+                        )
+                        : null,
+              ),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+              ],
+              autofocus: true,
+              validator: _validateWeight,
+              onFieldSubmitted: (_) => _submitForm(),
+            ),
+            ElevatedButton(
+              onPressed: isProcessing ? null : _submitForm,
+              child: Text(isEditing ? 'Cập Nhật Bao' : 'Thêm Bao'),
+            ),
+          ],
         ),
       ),
-    );
-  }
-
-  Widget _buildWeightTextField(double bottomInset) {
-    return TextFormField(
-      controller: weightController,
-      focusNode: weightFocusNode,
-      decoration: InputDecoration(
-        labelText: 'Cân nặng (kg)',
-        border: const OutlineInputBorder(),
-        suffixText: 'kg',
-        contentPadding: EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: bottomInset > 0 ? 8 : 12,
-        ),
-        suffixIcon:
-            isEditing
-                ? IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: onCancelEditing,
-                )
-                : null,
-      ),
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
-      autofocus: true,
-      validator: _validateWeight,
-      onFieldSubmitted: (_) => _submitForm(),
     );
   }
 
@@ -896,13 +912,6 @@ class UnitForm extends StatelessWidget {
       return 'Cân nặng phải lớn hơn 0';
     }
     return null;
-  }
-
-  Widget _buildSubmitButton() {
-    return ElevatedButton(
-      onPressed: isProcessing ? null : _submitForm,
-      child: Text(isEditing ? 'Cập Nhật Bao' : 'Thêm Bao'),
-    );
   }
 
   void _submitForm() {

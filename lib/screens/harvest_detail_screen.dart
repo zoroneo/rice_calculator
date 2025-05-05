@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -28,20 +29,12 @@ class _HarvestDetailScreenState extends State<HarvestDetailScreen> {
   final ScrollController _scrollController = ScrollController();
   bool _isCollapsed = false;
 
-  // Các thuộc tính cho bộ lọc batch
-  String _filterMode = 'all'; // 'all', 'completed', 'incomplete'
-  String _sortMode = 'name'; // 'name', 'weight'
-  bool _sortAscending = true;
-  TextEditingController _searchController = TextEditingController();
-  bool _showFilterOptions = false;
-
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController();
     _priceController = TextEditingController();
     _deductionController = TextEditingController();
-    _searchController = TextEditingController();
 
     _scrollController.addListener(_onScroll);
   }
@@ -51,7 +44,6 @@ class _HarvestDetailScreenState extends State<HarvestDetailScreen> {
     _nameController.dispose();
     _priceController.dispose();
     _deductionController.dispose();
-    _searchController.dispose();
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();
@@ -61,9 +53,9 @@ class _HarvestDetailScreenState extends State<HarvestDetailScreen> {
     final isCollapsed =
         _scrollController.hasClients && _scrollController.offset > 50;
     if (isCollapsed != _isCollapsed) {
-      // Use addPostFrameCallback to defer the setState call to the next frame
-      // This avoids calling setState during layout
-      WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Use SchedulerBinding instead of addPostFrameCallback to avoid
+      // setting state during build/layout
+      SchedulerBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           setState(() {
             _isCollapsed = isCollapsed;
@@ -383,180 +375,6 @@ class _HarvestDetailScreenState extends State<HarvestDetailScreen> {
     }
   }
 
-  // Filter and sort batches based on current filter settings
-  List<Batch> _getFilteredBatches(Harvest harvest) {
-    List<Batch> filteredBatches = List.from(harvest.batches);
-
-    // Áp dụng bộ lọc theo trạng thái hoàn thành
-    if (_filterMode == 'completed') {
-      filteredBatches = filteredBatches.where((batch) => batch.isFull).toList();
-    } else if (_filterMode == 'incomplete') {
-      filteredBatches =
-          filteredBatches.where((batch) => !batch.isFull).toList();
-    }
-
-    // Áp dụng tìm kiếm theo tên
-    if (_searchController.text.isNotEmpty) {
-      final searchQuery = _searchController.text.toLowerCase();
-      filteredBatches =
-          filteredBatches
-              .where((batch) => batch.name.toLowerCase().contains(searchQuery))
-              .toList();
-    }
-
-    // Sắp xếp theo tiêu chí đã chọn
-    filteredBatches.sort((a, b) {
-      if (_sortMode == 'name') {
-        return _sortAscending
-            ? a.name.compareTo(b.name)
-            : b.name.compareTo(a.name);
-      } else {
-        // weight
-        return _sortAscending
-            ? a.totalWeight.compareTo(b.totalWeight)
-            : b.totalWeight.compareTo(a.totalWeight);
-      }
-    });
-
-    return filteredBatches;
-  }
-
-  // Hiển thị dialog bộ lọc và sắp xếp
-  void _showFilterDialog(BuildContext context) {
-    // Lưu trữ tạm thời các giá trị lọc hiện tại
-    String tempFilterMode = _filterMode;
-    String tempSortMode = _sortMode;
-    bool tempSortAscending = _sortAscending;
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: const Text('Lọc và Sắp xếp'),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Lọc theo trạng thái:',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    RadioListTile<String>(
-                      title: const Text('Tất cả'),
-                      value: 'all',
-                      groupValue: tempFilterMode,
-                      onChanged: (value) {
-                        setState(() {
-                          tempFilterMode = value!;
-                        });
-                      },
-                    ),
-                    RadioListTile<String>(
-                      title: const Text('Đã hoàn thành'),
-                      value: 'completed',
-                      groupValue: tempFilterMode,
-                      onChanged: (value) {
-                        setState(() {
-                          tempFilterMode = value!;
-                        });
-                      },
-                    ),
-                    RadioListTile<String>(
-                      title: const Text('Chưa hoàn thành'),
-                      value: 'incomplete',
-                      groupValue: tempFilterMode,
-                      onChanged: (value) {
-                        setState(() {
-                          tempFilterMode = value!;
-                        });
-                      },
-                    ),
-                    const Divider(),
-                    const Text(
-                      'Sắp xếp theo:',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    RadioListTile<String>(
-                      title: const Text('Tên mã'),
-                      value: 'name',
-                      groupValue: tempSortMode,
-                      onChanged: (value) {
-                        setState(() {
-                          tempSortMode = value!;
-                        });
-                      },
-                    ),
-                    RadioListTile<String>(
-                      title: const Text('Trọng lượng'),
-                      value: 'weight',
-                      groupValue: tempSortMode,
-                      onChanged: (value) {
-                        setState(() {
-                          tempSortMode = value!;
-                        });
-                      },
-                    ),
-                    const Divider(),
-                    const Text(
-                      'Thứ tự sắp xếp:',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    RadioListTile<bool>(
-                      title: const Text('Tăng dần'),
-                      value: true,
-                      groupValue: tempSortAscending,
-                      onChanged: (value) {
-                        setState(() {
-                          tempSortAscending = value!;
-                        });
-                      },
-                    ),
-                    RadioListTile<bool>(
-                      title: const Text('Giảm dần'),
-                      value: false,
-                      groupValue: tempSortAscending,
-                      onChanged: (value) {
-                        setState(() {
-                          tempSortAscending = value!;
-                        });
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop(); // Đóng dialog mà không lưu
-                  },
-                  child: const Text('Hủy'),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    // Cập nhật các giá trị lọc chính khi người dùng xác nhận
-                    this.setState(() {
-                      _filterMode = tempFilterMode;
-                      _sortMode = tempSortMode;
-                      _sortAscending = tempSortAscending;
-                    });
-                    Navigator.of(context).pop(); // Đóng dialog
-                  },
-                  child: const Text('Áp dụng'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Consumer<HarvestProvider>(
@@ -672,18 +490,6 @@ class _HarvestDetailScreenState extends State<HarvestDetailScreen> {
                                 )
                                 : BatchesContent(
                                   harvest: harvest,
-                                  filterMode: _filterMode,
-                                  sortMode: _sortMode,
-                                  sortAscending: _sortAscending,
-                                  searchController: _searchController,
-                                  showFilterOptions: _showFilterOptions,
-                                  onShowFilterOptionsChanged:
-                                      (value) => setState(
-                                        () => _showFilterOptions = value,
-                                      ),
-                                  onShowFilterDialog:
-                                      () => _showFilterDialog(context),
-                                  getFilteredBatches: _getFilteredBatches,
                                   onDeleteBatch:
                                       (batch) => _deleteBatch(
                                         context,
@@ -759,7 +565,7 @@ class CollapsedSummaryWidget extends StatelessWidget {
             ),
           ),
           Text(
-            '₫${formatter.format(harvest.totalPayment)}',
+            '${formatter.format(harvest.totalPayment)} đ',
             style: TextStyle(
               fontWeight: FontWeight.bold,
               color: Theme.of(context).colorScheme.primary,
@@ -835,7 +641,7 @@ class HarvestSummaryWidget extends StatelessWidget {
                     fit: BoxFit.scaleDown,
                     alignment: Alignment.centerLeft,
                     child: Text(
-                      'Giá: ₫${formatter.format(harvest.unitPrice)}/kg',
+                      'Giá: ${formatter.format(harvest.unitPrice)} đ/kg',
                       style: const TextStyle(fontWeight: FontWeight.w500),
                     ),
                   ),
@@ -909,7 +715,7 @@ class HarvestSummaryWidget extends StatelessWidget {
               child: FittedBox(
                 fit: BoxFit.scaleDown,
                 child: Text(
-                  'Thành tiền: ₫${formatter.format(harvest.totalPayment)}',
+                  'Thành tiền: ${formatter.format(harvest.totalPayment)} đ',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -999,9 +805,9 @@ class HarvestEditForm extends StatelessWidget {
                   child: TextFormField(
                     controller: priceController,
                     decoration: const InputDecoration(
-                      labelText: 'Giá mỗi kg (₫)',
+                      labelText: 'Giá mỗi kg',
                       border: OutlineInputBorder(),
-                      prefixText: '₫ ',
+                      suffixText: ' đ',
                     ),
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
@@ -1075,27 +881,11 @@ class HarvestEditForm extends StatelessWidget {
 // Widget hiển thị nội dung các mã (batches)
 class BatchesContent extends StatelessWidget {
   final Harvest harvest;
-  final String filterMode;
-  final String sortMode;
-  final bool sortAscending;
-  final TextEditingController searchController;
-  final bool showFilterOptions;
-  final Function(bool) onShowFilterOptionsChanged;
-  final VoidCallback onShowFilterDialog;
-  final List<Batch> Function(Harvest) getFilteredBatches;
   final Function(Batch) onDeleteBatch;
 
   const BatchesContent({
     super.key,
     required this.harvest,
-    required this.filterMode,
-    required this.sortMode,
-    required this.sortAscending,
-    required this.searchController,
-    required this.showFilterOptions,
-    required this.onShowFilterOptionsChanged,
-    required this.onShowFilterDialog,
-    required this.getFilteredBatches,
     required this.onDeleteBatch,
   });
 
@@ -1103,22 +893,9 @@ class BatchesContent extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        BatchesHeader(
-          harvest: harvest,
-          filterMode: filterMode,
-          sortMode: sortMode,
-          sortAscending: sortAscending,
-          searchController: searchController,
-          showFilterOptions: showFilterOptions,
-          onShowFilterOptionsChanged: onShowFilterOptionsChanged,
-          onShowFilterDialog: onShowFilterDialog,
-        ),
+        BatchesHeader(harvest: harvest),
         Expanded(
-          child: BatchesGrid(
-            harvest: harvest,
-            filteredBatches: getFilteredBatches(harvest),
-            onDeleteBatch: onDeleteBatch,
-          ),
+          child: BatchesGrid(harvest: harvest, onDeleteBatch: onDeleteBatch),
         ),
       ],
     );
@@ -1128,25 +905,8 @@ class BatchesContent extends StatelessWidget {
 // Widget hiển thị tiêu đề và bộ lọc cho các mã
 class BatchesHeader extends StatelessWidget {
   final Harvest harvest;
-  final String filterMode;
-  final String sortMode;
-  final bool sortAscending;
-  final TextEditingController searchController;
-  final bool showFilterOptions;
-  final Function(bool) onShowFilterOptionsChanged;
-  final VoidCallback onShowFilterDialog;
 
-  const BatchesHeader({
-    super.key,
-    required this.harvest,
-    required this.filterMode,
-    required this.sortMode,
-    required this.sortAscending,
-    required this.searchController,
-    required this.showFilterOptions,
-    required this.onShowFilterOptionsChanged,
-    required this.onShowFilterDialog,
-  });
+  const BatchesHeader({super.key, required this.harvest});
 
   @override
   Widget build(BuildContext context) {
@@ -1164,86 +924,9 @@ class BatchesHeader extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              Row(
-                children: [
-                  // Nút tìm kiếm
-                  IconButton(
-                    icon: const Icon(Icons.search),
-                    tooltip: 'Tìm kiếm',
-                    onPressed: () {
-                      onShowFilterOptionsChanged(!showFilterOptions);
-                    },
-                  ),
-                  // Nút lọc
-                  IconButton(
-                    icon: const Icon(Icons.filter_list),
-                    tooltip: 'Lọc và sắp xếp',
-                    onPressed: onShowFilterDialog,
-                  ),
-                ],
-              ),
             ],
           ),
         ),
-        // Trường tìm kiếm
-        if (showFilterOptions)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: TextField(
-              controller: searchController,
-              decoration: InputDecoration(
-                hintText: 'Tìm kiếm mã...',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon:
-                    searchController.text.isNotEmpty
-                        ? IconButton(
-                          icon: const Icon(Icons.clear),
-                          onPressed: () {
-                            searchController.clear();
-                            onShowFilterOptionsChanged(true);
-                          },
-                        )
-                        : null,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              onChanged: (value) {
-                // setState được xử lý ở lớp cha
-              },
-            ),
-          ),
-        // Hiển thị các bộ lọc đang kích hoạt
-        if (filterMode != 'all' || sortMode != 'name' || !sortAscending)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  if (filterMode != 'all')
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: Chip(
-                        label: Text(
-                          filterMode == 'completed'
-                              ? 'Đã hoàn thành'
-                              : 'Chưa hoàn thành',
-                        ),
-                        onDeleted: () {
-                          // onFilterModeChanged('all') - được xử lý ở lớp cha
-                        },
-                      ),
-                    ),
-                  Chip(
-                    label: Text(
-                      'Sắp xếp: ${sortMode == 'name' ? 'Tên' : 'Trọng lượng'} ${sortAscending ? '↑' : '↓'}',
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
       ],
     );
   }
@@ -1252,40 +935,35 @@ class BatchesHeader extends StatelessWidget {
 // Widget hiển thị lưới các mã
 class BatchesGrid extends StatelessWidget {
   final Harvest harvest;
-  final List<Batch> filteredBatches;
   final Function(Batch) onDeleteBatch;
 
   const BatchesGrid({
     super.key,
     required this.harvest,
-    required this.filteredBatches,
     required this.onDeleteBatch,
   });
 
   @override
   Widget build(BuildContext context) {
-    if (filteredBatches.isEmpty) {
-      // Hiển thị thông báo khác nhau tùy thuộc vào trạng thái lọc
-      if (harvest.batches.isEmpty) {
-        return const Center(child: Text('Chưa có mã nào. Hãy thêm mã mới!'));
-      } else {
-        return const Center(
-          child: Text('Không tìm thấy mã nào phù hợp với bộ lọc.'),
-        );
-      }
+    if (harvest.batches.isEmpty) {
+      return const Center(child: Text('Chưa có mã nào. Hãy thêm mã mới!'));
     }
 
+    // Sắp xếp batches theo createdAt (từ mới nhất đến cũ nhất)
+    final sortedBatches = List<Batch>.from(harvest.batches)
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
     return GridView.builder(
-      padding: const EdgeInsets.all(16),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 1.2,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: 100, // Kích thước tối đa cho mỗi item
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
+        childAspectRatio: 0.9, // Tỉ lệ chiều rộng/chiều cao
       ),
-      itemCount: filteredBatches.length,
+      itemCount: sortedBatches.length,
       itemBuilder: (context, index) {
-        final batch = filteredBatches[index];
+        final batch = sortedBatches[index];
         return BatchCard(
           harvestId: harvest.id,
           batch: batch,
@@ -1314,10 +992,13 @@ class BatchCard extends StatelessWidget {
     final formatter = NumberFormat("#,###.##");
     final completedUnits = batch.units.length;
     final totalUnits = Batch.maxUnits;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Card(
-      clipBehavior: Clip.hardEdge,
-      elevation: 2,
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      elevation: 1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       child: InkWell(
         onTap: () {
           Navigator.push(
@@ -1331,20 +1012,31 @@ class BatchCard extends StatelessWidget {
             ),
           );
         },
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header với tên và nút xóa
+            Container(
+              padding: const EdgeInsets.fromLTRB(8, 6, 4, 6),
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainerHighest.withAlpha(50),
+                border: Border(
+                  bottom: BorderSide(
+                    color: colorScheme.outlineVariant.withAlpha(50),
+                    width: 1,
+                  ),
+                ),
+              ),
+              child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Expanded(
                     child: Text(
                       batch.name,
-                      style: const TextStyle(
-                        fontSize: 16,
+                      style: TextStyle(
+                        fontSize: 14,
                         fontWeight: FontWeight.bold,
+                        color: colorScheme.onSurfaceVariant,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -1352,46 +1044,86 @@ class BatchCard extends StatelessWidget {
                   InkWell(
                     borderRadius: BorderRadius.circular(12),
                     onTap: onDelete,
-                    child: const Padding(
-                      padding: EdgeInsets.all(4),
-                      child: Icon(Icons.delete, size: 18),
+                    child: Padding(
+                      padding: const EdgeInsets.all(2),
+                      child: Icon(
+                        Icons.delete_outline,
+                        size: 16,
+                        color: colorScheme.error,
+                      ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
-              Text('$completedUnits/$totalUnits bao'),
-              const SizedBox(height: 4),
-              LinearProgressIndicator(value: completedUnits / totalUnits),
-              const SizedBox(height: 8),
-              Flexible(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Tổng: ${formatter.format(batch.totalWeight)} kg',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
+            ),
+
+            // Nội dung thẻ
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(8, 8, 8, 6),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Số lượng bao và thanh tiến trình
+                    Row(
+                      children: [
+                        Text(
+                          'Bao: $completedUnits/$totalUnits',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        if (batch.isFull)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 4),
+                            child: Icon(
+                              Icons.check_circle,
+                              size: 12,
+                              color: Colors.green,
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(2),
+                      child: LinearProgressIndicator(
+                        value: completedUnits / totalUnits,
+                        backgroundColor: colorScheme.surfaceContainerHighest,
+                        minHeight: 3,
+                      ),
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    // Tổng khối lượng
+                    Expanded(
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 4,
+                          horizontal: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: colorScheme.primaryContainer.withAlpha(30),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            '${formatter.format(batch.totalWeight)} kg',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: colorScheme.primary,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              if (batch.isFull)
-                Container(
-                  margin: const EdgeInsets.only(top: 8),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.green,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Text(
-                    'Hoàn thành',
-                    style: TextStyle(color: Colors.white, fontSize: 12),
-                  ),
-                ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
