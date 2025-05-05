@@ -107,17 +107,17 @@ class _BatchDetailScreenState extends State<BatchDetailScreen> {
 
       if (success) {
         _weightController.clear();
-        
+
         // Kiểm tra xem đã đủ 5 bao chưa để tự động quay về màn hình chi tiết vụ mùa
         final currentBatch = _getHarvestProvider().harvests
             .firstWhere((h) => h.id == harvestId)
             .batches
             .firstWhere((b) => b.id == batchId);
-            
+
         if (currentBatch.isFull && mounted) {
           // Quay về màn hình trước
           Navigator.of(context).pop();
-          
+
           // Sau khi quay về thì hiển thị thông báo
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -234,7 +234,8 @@ class _BatchDetailScreenState extends State<BatchDetailScreen> {
     if (_isEditing && _editingUnitIndex == index) return;
 
     // Format the weight properly - remove decimal part if it's a whole number
-    final formattedWeight = weight % 1 == 0 ? weight.toInt().toString() : weight.toString();
+    final formattedWeight =
+        weight % 1 == 0 ? weight.toInt().toString() : weight.toString();
     _weightController.text = formattedWeight;
 
     setState(() {
@@ -913,6 +914,7 @@ class UnitForm extends StatelessWidget {
               validator: _validateWeight,
               onFieldSubmitted: (_) => _submitForm(),
             ),
+            const SizedBox(height: 8),
             ElevatedButton(
               onPressed: isProcessing ? null : _submitForm,
               child: Text(isEditing ? 'Cập Nhật Bao' : 'Thêm Bao'),
