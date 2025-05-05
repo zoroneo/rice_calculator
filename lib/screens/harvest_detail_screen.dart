@@ -994,6 +994,11 @@ class BatchCard extends StatelessWidget {
     final totalUnits = Batch.maxUnits;
     final colorScheme = Theme.of(context).colorScheme;
 
+    // Format weight properly - remove decimal part if it's a whole number
+    final formattedWeight = batch.totalWeight % 1 == 0 
+        ? formatter.format(batch.totalWeight.toInt()) 
+        : formatter.format(batch.totalWeight);
+
     return Card(
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
@@ -1109,7 +1114,7 @@ class BatchCard extends StatelessWidget {
                         child: FittedBox(
                           fit: BoxFit.scaleDown,
                           child: Text(
-                            '${formatter.format(batch.totalWeight)} kg',
+                            '$formattedWeight kg',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontWeight: FontWeight.bold,

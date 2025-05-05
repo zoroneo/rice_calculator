@@ -107,6 +107,27 @@ class _BatchDetailScreenState extends State<BatchDetailScreen> {
 
       if (success) {
         _weightController.clear();
+        
+        // Kiểm tra xem đã đủ 5 bao chưa để tự động quay về màn hình chi tiết vụ mùa
+        final currentBatch = _getHarvestProvider().harvests
+            .firstWhere((h) => h.id == harvestId)
+            .batches
+            .firstWhere((b) => b.id == batchId);
+            
+        if (currentBatch.isFull && mounted) {
+          // Quay về màn hình trước
+          Navigator.of(context).pop();
+          
+          // Sau khi quay về thì hiển thị thông báo
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Đã thêm đủ 5 bao'),
+                duration: Duration(seconds: 2),
+              ),
+            );
+          }
+        }
       } else {
         _showMessage('Không thể thêm bao: đã đủ 5 bao trong mã này');
       }
@@ -212,7 +233,10 @@ class _BatchDetailScreenState extends State<BatchDetailScreen> {
   void _startEditingUnit(int index, double weight) {
     if (_isEditing && _editingUnitIndex == index) return;
 
-    _weightController.text = weight.toString();
+    // Format the weight properly - remove decimal part if it's a whole number
+    final formattedWeight = weight % 1 == 0 ? weight.toInt().toString() : weight.toString();
+    _weightController.text = formattedWeight;
+
     setState(() {
       _isEditing = true;
       _editingUnitIndex = index;
@@ -859,7 +883,6 @@ class UnitForm extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
-          spacing: 8,
           children: [
             TextFormField(
               controller: weightController,
